@@ -66,6 +66,7 @@ def main(args):
 	# check for proper command line input
 	if(len(args) < 3):
 		print("USAGE: <program name> <host ip> <host port> i.e. 'node.py 127.0.0.1 50001'")
+		exit()
 	else:
 		hostIP = sys.argv[1]
 		hostPort = sys.argv[2]
