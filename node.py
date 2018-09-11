@@ -6,8 +6,7 @@ import SocketServer
 import socket
 import time
 
-
-# UDP handler class
+# UDP handler class (this comes in TCP too...)
 class MyUDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
 
