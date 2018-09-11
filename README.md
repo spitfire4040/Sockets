@@ -14,7 +14,7 @@ To use, clone the 'Sockets' repo to a local file system. Open one terminal for e
 at present, but IP addresses can be changed and this will actually run on the Internet or a live network). Enter the following
 at the command line:
 
-python <program-name> <node-name> <topology file>
+python program-name node-name topology file
 
 for example:
 
