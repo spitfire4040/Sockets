@@ -204,7 +204,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 		# look for 'hello' message (this is for the 'is-alive' functionality)
 		if message[0] == "hhhhh":
 
-			# set link flags
+			# set link flag for neighbor to true if they send a message
 			if message[3] == l1_port:
 				l1_flag = True
 
@@ -221,7 +221,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 		else:
 			print "Node " + message[1] + " says: " + "'" + message[0] + "'"
 
-# Function: sendto()
+# Function: sendto() this sends messages between nodes
 def sendto(node, dest_nid, message):
 
 	# global variables
@@ -251,7 +251,7 @@ def sendto(node, dest_nid, message):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 	sock.sendto(message + ' ' + NID + ' ' + hostname + ' ' + port, (l1_hostname, l1_port_msg))
 
-# function: start listener
+# function: start listener (establishes global variables and starts threads)
 def start_listener():
 
 	# global variables
@@ -290,7 +290,7 @@ def start_listener():
 	# slight pause to let things catch up
 	time.sleep(2)
 
-	# start threads for listener
+	# start threads for listeners,hello, and up/down timer
 	thread.start_new_thread(receiver_routing, ())
 	thread.start_new_thread(receiver_message, ())	
 	thread.start_new_thread(hello, ())
@@ -328,7 +328,7 @@ def receiver_message():
 	except:
 		print "failed to start messaging listener"
 
-# function: hello (alive)
+# function: hello (is-alive)
 def hello():
 
 	# global variables
@@ -337,6 +337,7 @@ def hello():
 	# eternal loop
 	while (1):
 
+		# send an 'I'm alive' message to each of my 4 links
 		try:
 		# open socket and send to neighbor 1
 			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
@@ -375,6 +376,7 @@ def timer():
 	# global variables 
 	global l1_flag, l2_flag, l3_flag, l4_flag
 
+	# try 4 times to set initial state to be sure it happens...
 	for x in range(0,4):
 
 		# first wait 10 seconds, then set flags to false (reset)
@@ -410,7 +412,7 @@ def timer():
 
 		time.sleep(1)
 
-	# eternal loop
+	# eternal loop after initial state is set to keep track of link state
 	while (1):
 
 		# now check for true every 30 seconds
