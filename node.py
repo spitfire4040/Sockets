@@ -440,6 +440,46 @@ def timer():
 		if l4_flag == True:
 			node.SetUpFlagL4(True)
 
+# routing table
+def routing_table():
+
+	# global variables
+	global NID, hostname, port
+	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
+	global l1_port,l2_port, l3_port, l4_port
+	global l1_NID, l2_NID, l3_NID, l4_NID
+	global l1_flag, l2_flag, l3_flag, l4_flag
+
+	# start loop
+	while(1):
+
+		# open text file for routing table
+		textfile = 'rt-' + NID + '.txt'
+		rt = open(textfile, "w")
+
+		# write initial connections to file
+		if l1_flag == True:
+			if l1_NID != 0:
+				rt.write(str(l1_NID) + '\t' + '1' + '\n')
+
+		if l2_flag == True:
+			if l2_NID != 0:
+				rt.write(str(l2_NID) + '\t' + '1' + '\n')
+
+		if l3_flag == True:
+			if l3_NID != 0:
+				rt.write(str(l3_NID) + '\t' + '1' + '\n')
+
+		if l4_flag == True:
+			if l4_NID != 0:
+				rt.write(str(l4_NID) + '\t' + '1' + '\n')
+
+		# close file
+		rt.close()
+
+		# set timer
+		time.sleep(15)
+
 # print status
 def PrintStatus():
 
