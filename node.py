@@ -464,32 +464,66 @@ def routing_table():
 	global l1_NID, l2_NID, l3_NID, l4_NID
 	global l1_flag, l2_flag, l3_flag, l4_flag
 
+	# set ports for TCP sender
+	l1_port_file = l1_port + 500
+	l2_port_file = l2_port + 500
+	l3_port_file = l3_port + 500
+	l4_port_file = l4_port + 500
+
+	buff = 1024
+
 	# start loop
 	while(1):
 
 		# open text file for routing table
-		textfile = 'rt-' + NID + '.txt'
+		textfile = 'rt-' + str(NID) + '.txt'
 		rt = open(textfile, "w")
 
 		# write initial connections to file
 		if l1_flag == True:
 			if l1_NID != 0:
-				rt.write(str(l1_NID) + '\t' + '1' + '\n')
+				rt.write(str(l1_NID) + '\t' + '1' + '\t' + NID + '\n')
 
 		if l2_flag == True:
 			if l2_NID != 0:
-				rt.write(str(l2_NID) + '\t' + '1' + '\n')
+				rt.write(str(l2_NID) + '\t' + '1' + '\t' + NID  + '\n')
 
 		if l3_flag == True:
 			if l3_NID != 0:
-				rt.write(str(l3_NID) + '\t' + '1' + '\n')
+				rt.write(str(l3_NID) + '\t' + '1' + '\t' + NID  + '\n')
 
 		if l4_flag == True:
 			if l4_NID != 0:
-				rt.write(str(l4_NID) + '\t' + '1' + '\n')
+				rt.write(str(l4_NID) + '\t' + '1' + '\t' + NID  + '\n')
 
 		# close file
 		rt.close()
+
+		# share my file with all neighbors
+		if l1_flag == True:
+			if l1_NID != 0:
+				pass
+
+
+
+		if l2_flag == True:
+			if l2_NID != 0:
+				pass
+
+
+
+		if l3_flag == True:
+			if l3_NID != 0:
+				pass
+
+
+		if l4_flag == True:
+			if l4_NID != 0:
+				pass
+
+
+		# set timer
+		time.sleep(15)
 
 		# set timer
 		time.sleep(15)
