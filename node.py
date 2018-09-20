@@ -8,7 +8,7 @@ import time
 import random
 
 # set global variables
-NID = ' '
+NID = 0
 hostname = ' '
 udp_port = 0
 tcp_port = 0
@@ -45,7 +45,7 @@ def InitializeTopology (nid, itc):
 	global node
 
 	# initialize node object
-	node = Node(nid)
+	node = Node(int(nid))
 
 	# open itc.txt file and read to list
 	infile = open(itc)
@@ -65,12 +65,12 @@ def InitializeTopology (nid, itc):
 	for entry in list:
 		temp = entry.split(' ')
 		node.Set_link_table(int(temp[0]), (int(temp[3]), int(temp[4]), int(temp[5]), int(temp[6])))
-		node.Set_address_data_table(temp[0], temp[1], temp[2])
+		node.Set_address_data_table(int(temp[0]), temp[1], int(temp[2]))
 
 		# set parameters for for this node
-		if node.GetNID() == temp[0]:
+		if node.GetNID() == int(temp[0]):
 			node.SetHostName(temp[1])
-			node.SetPort(temp[2])
+			node.SetPort(int(temp[2]))
 
 			# set starting point
 			number_of_nodes = len(temp) - 3
@@ -199,20 +199,15 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 		# self.request is the TCP socket connected to the client
 		self.data = self.request.recv(1024).strip()
 		message = self.data.split()
-		message = ''.join(message).split()
 
 		if message[0] == 'msg':
 			print message[1]
 			print '\r'
 
 		if message[0] == 'rte':
-			print message
+			print message[1] + ' ' + message[2] + ' ' + message[3]
 			print '\r'
 
-		# ************************************************************
-		# need some logic here to route traffic to proper recipient...
-		# ************************************************************
-		
 # Class: MyUDPHandler
 class MyUDPHandler(SocketServer.BaseRequestHandler):
 
@@ -258,9 +253,9 @@ def sendto(dest_nid, message):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	try:
-		print 'sending ' + '"' + message + '"' + ' to ' + l1_hostname + ', port ' + l1_tcp_port
+		print 'sending ' + '"' + message + '"' + ' to ' + l1_hostname + ', ' + str(l1_udp_port) + ' ' + str(l1_tcp_port)
 		# Connect to server and send data
-		sock.connect((l1_hostname, int(l1_tcp_port)))
+		sock.connect((l1_hostname, l1_tcp_port))
 		sock.sendall('msg' + ' ' + message)
 
 		# Receive data from the server and shut down
@@ -288,27 +283,27 @@ def start_listener():
 	l1_NID = link1[0]
 	l1_hostname = link1[1]
 	l1_udp_port = link1[2]
-	l1_tcp_port = str(int(l1_udp_port) + 500)
+	l1_tcp_port = l1_udp_port + 500
 
 	l2_NID = link2[0]
 	l2_hostname = link2[1]
 	l2_udp_port = link2[2]
-	l2_tcp_port = str(int(l2_udp_port) + 500)
+	l2_tcp_port = l2_udp_port + 500
 
 	l3_NID = link3[0]
 	l3_hostname = link3[1]
 	l3_udp_port = link3[2]
-	l3_tcp_port = str(int(l3_udp_port) + 500)
+	l3_tcp_port = l3_udp_port + 500
 
 	l4_NID = link4[0]
 	l4_hostname = link4[1]
 	l4_udp_port = link4[2]
-	l4_tcp_port = str(int(l4_udp_port) + 500)
+	l4_tcp_port = l4_udp_port + 500
 
 	hostname = node.GetHostName()
 	NID = node.GetNID()
 	udp_port = node.GetPort()
-	tcp_port = str(int(udp_port) + 500)
+	tcp_port = udp_port + 500
 
 	# slight pause to let things catch up
 	time.sleep(2)
@@ -328,7 +323,7 @@ def TCP_listener():
 
 	# set socket for listener
 	try:
-		server = SocketServer.TCPServer((hostname, int(tcp_port)), MyTCPHandler)
+		server = SocketServer.TCPServer((hostname, tcp_port), MyTCPHandler)
 		server.serve_forever()
 	except:
 		print "failed to start tcp listener"
@@ -341,7 +336,7 @@ def UDP_listener():
 
 	# set socket for listener
 	try:
-		server = SocketServer.UDPServer((hostname, int(udp_port)), MyUDPHandler)
+		server = SocketServer.UDPServer((hostname, udp_port), MyUDPHandler)
 		server.serve_forever()
 
 	# report error if fail
@@ -362,7 +357,7 @@ def hello():
 		try:
 		# open socket and send to neighbor 1
 			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l1_hostname, int(l1_udp_port)))
+			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l1_hostname, l1_udp_port))
 			time.sleep(.5)
 		except:
 			pass
@@ -370,7 +365,7 @@ def hello():
 		try:
 			# open socket and send to neighbor 2
 			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(NID + ' ' + hostname + ' ' + udp_port, (l2_hostname, int(l2_udp_port)))
+			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l2_hostname, l2_udp_port))
 			time.sleep(.5)
 		except:
 			pass
@@ -378,7 +373,7 @@ def hello():
 		try:
 			# open socket and send to neighbor 3
 			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(NID + ' ' + hostname + ' ' + udp_port, (l3_hostname, int(l3_udp_port)))
+			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l3_hostname, l3_udp_port))
 			time.sleep(.5)
 		except:
 			pass
@@ -386,7 +381,7 @@ def hello():
 		try:
 			# open socket and send to neighbor 4
 			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(NID + ' ' + hostname + ' ' + udp_port, (l4_hostname, int(l4_udp_port)))
+			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l4_hostname, l4_udp_port))
 			time.sleep(.5)
 		except:
 			pass
@@ -484,33 +479,33 @@ def routing():
 
 		# write initial connections to file
 		if node.GetUpFlagL1() == True:
-			if l1_NID != '0':
+			if l1_NID != 0:
 				if l1_NID not in routes:
-					routes[l1_NID] = ('1',l1_NID)
+					routes[l1_NID] = (l1_NID,1)
 		else:
 			if l1_NID in routes:
 				del routes[l1_NID]
 
 		if node.GetUpFlagL2() == True:
-			if l2_NID != '0':
+			if l2_NID != 0:
 				if l2_NID not in routes:
-					routes[l2_NID] = ('1',l2_NID)
+					routes[l2_NID] = (l2_NID,1)
 		else:
 			if l2_NID in routes:
 				del routes[l2_NID]
 
 		if node.GetUpFlagL3 == True:
-			if l3_NID != '0':
+			if l3_NID != 0:
 				if l3_NID not in routes:
-					routes[l3_NID] = ('1',l3_NID)
+					routes[l3_NID] = (l3_NID,1)
 		else:
 			if l3_NID in routes:
 				del routes[l3_NID]
 
 		if node.GetUpFlagL4 == True:
-			if l4_NID != '0':
+			if l4_NID != 0:
 				if l4_NID not in routes:
-					routes[l4_NID] = ('1',l4_NID)
+					routes[l4_NID] = (l4_NID,1)
 		else:
 			if l4_NID in routes:
 				del routes[l4_NID]
@@ -518,14 +513,13 @@ def routing():
 		# update routes in all neighbor nodes
 
 		for address in addresses:
-			if address[0] != '0':
+			if address[0] != 0:
 				for route in routes:
 
 					try:
 						sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
-						sock.connect((address[1], int(address[2])))
-						sock.sendall('rte' + ' ' + route + ' ' + routes[route][0] + ' ' + routes[route][1])
-						print 'sent: rte' + ' ' + route + ' ' + routes[route][0] + ' ' + routes[route][1]				
+						sock.connect((address[1], address[2]))
+						sock.sendall('rte' + ' ' + str(route) + ' ' + str(routes[route][0]) + ' ' + str(routes[route][1]))
 					
 						sock.close()
 					except:
@@ -542,10 +536,10 @@ def PrintStatus():
 	os.system('clear')
 	print "Status of this node"
 	print "-------------------"
-	print "NID: " + NID
+	print "NID: " + str(NID)
 	print "HostName: ", 
-	print "UDP Port: " + udp_port
-	print "TCP Port: " + tcp_port
+	print "UDP Port: " + str(udp_port)
+	print "TCP Port: " + str(tcp_port)
 
 	print "Links: " + str(node.GetLinks())
 	print "Link Table: ", str(node.Get_link_table())
@@ -558,7 +552,7 @@ def PrintStatus():
 	if l4_NID != 0:
 		print "Link up to node " + str(l4_NID) + ':', (node.GetUpFlagL4())		
 	print "Address Data Table: ", str(node.address_data_table)
-	print "Routes from " + NID + ": ", routes
+	print "Routes from " + str(NID) + ": ", routes
 	print "-------------------"
 	raw_input("press 'enter' to continue....")
 
