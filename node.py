@@ -200,13 +200,61 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 		self.data = self.request.recv(1024).strip()
 		message = self.data.split()
 
+######################################## Print or Forward Messages #############################################
+
 		if message[0] == 'msg':
 			print message[1]
 			print '\r'
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################################################################################################################
+
+######################################### Update Routing Tables #################################################			
+
 		if message[0] == 'rte':
 			print message[1] + ' ' + message[2] + ' ' + message[3]
 			print '\r'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################################################################################################################
 
 # Class: MyUDPHandler
 class MyUDPHandler(SocketServer.BaseRequestHandler):
@@ -246,8 +294,28 @@ def sendto(dest_nid, message):
 	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
 	global l1_NID, l2_NID, l3_NID, l4_NID
 
-	# # get sending node's NID (the node that sent the message)
-	# current_nid = node.GetNID() # get the NID of the node we were passed in this function
+################################# Send Message to Neighbor that is In The Network ####################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################################################################################################
 
 	# Create a socket (SOCK_STREAM means a TCP socket)
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
