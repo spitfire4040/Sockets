@@ -193,9 +193,16 @@ class Node(object):
 		self.address_data_table[nid] = nid, hostname, port
 
 # class TCP Handler
-class MyTCPHandler(SocketServer.BaseRequestHandler):
+class MyTCPHandler(SocketServer.BaseRequestHandler):	
 
     def handle(self):
+
+		# global variables
+		global NID, hostname, tcp_port
+		global l1_hostname, l2_hostname, l3_hostname, l4_hostname
+		global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
+		global l1_NID, l2_NID, l3_NID, l4_NID
+
 		# self.request is the TCP socket connected to the client
 		self.data = self.request.recv(1024).strip()
 		message = self.data.split()
@@ -233,8 +240,28 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 ######################################### Update Routing Tables #################################################			
 
 		if message[0] == 'rte':
-			print message[1] + ' ' + message[2] + ' ' + message[3]
-			print '\r'
+			#print message[1] + ' ' + message[2] + ' ' + message[3]
+			#print '\r'
+
+			dest = int(message[1])
+			gateway = int(message[2])
+			hops = int(message[3])
+			neighbor = int(message[4])
+
+			if dest not in routes:
+				if dest == NID:
+					pass
+				else:
+					routes[dest] = (neighbor,(hops+1))
+
+
+		print routes
+
+			# if dest in routes:
+			# 	for route in routes:
+			# 		if dest == route:
+			# 			if hops <= route[0]:
+			# 				routes[route][0] = hops
 
 
 
@@ -533,6 +560,9 @@ def timer():
 # function: routing
 def routing():
 
+	# <DESTINATION> <GATEWAY> <HOPS>
+	#       2           4       3
+
 	# global variables
 	global NID, hostname, tcp_port
 	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
@@ -549,7 +579,7 @@ def routing():
 		if node.GetUpFlagL1() == True:
 			if l1_NID != 0:
 				if l1_NID not in routes:
-					routes[l1_NID] = (l1_NID,1)
+					routes[l1_NID] = (l1_NID,0)
 		else:
 			if l1_NID in routes:
 				del routes[l1_NID]
@@ -557,7 +587,7 @@ def routing():
 		if node.GetUpFlagL2() == True:
 			if l2_NID != 0:
 				if l2_NID not in routes:
-					routes[l2_NID] = (l2_NID,1)
+					routes[l2_NID] = (l2_NID,0)
 		else:
 			if l2_NID in routes:
 				del routes[l2_NID]
@@ -565,7 +595,7 @@ def routing():
 		if node.GetUpFlagL3 == True:
 			if l3_NID != 0:
 				if l3_NID not in routes:
-					routes[l3_NID] = (l3_NID,1)
+					routes[l3_NID] = (l3_NID,0)
 		else:
 			if l3_NID in routes:
 				del routes[l3_NID]
@@ -573,27 +603,31 @@ def routing():
 		if node.GetUpFlagL4 == True:
 			if l4_NID != 0:
 				if l4_NID not in routes:
-					routes[l4_NID] = (l4_NID,1)
+					routes[l4_NID] = (l4_NID,0)
 		else:
 			if l4_NID in routes:
 				del routes[l4_NID]
 
 		# update routes in all neighbor nodes
 
-		for address in addresses:
-			if address[0] != 0:
-				for route in routes:
+		try:
+			for address in addresses:
+				if address[0] != 0:
+					for route in routes:
 
-					try:
-						sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
-						sock.connect((address[1], address[2]))
-						sock.sendall('rte' + ' ' + str(route) + ' ' + str(routes[route][0]) + ' ' + str(routes[route][1]))
-					
-						sock.close()
-					except:
-						pass
+						try:
+							sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
+							sock.connect((address[1], address[2]))
+							sock.sendall('rte' + ' ' + str(route) + ' ' + str(routes[route][0]) + ' ' + str(routes[route][1]) + ' ' + str(NID))
+						
+							sock.close()
+						except:
+							pass
+		except:
+			pass
 
-					time.sleep(2)
+		# send this information every 30 seconds
+		time.sleep(10)
 
 # print status
 def PrintStatus():
