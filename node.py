@@ -1,11 +1,13 @@
 # header files
 import socket
 import sys
-import thread
-import SocketServer
+import _thread
+#import SocketServer
+import socketserver
 import os
 import time
 import random
+import pickle
 
 # set global variables
 NID = 0
@@ -193,25 +195,31 @@ class Node(object):
 		self.address_data_table[nid] = nid, hostname, port
 
 # class TCP Handler
-class MyTCPHandler(SocketServer.BaseRequestHandler):	
+#class MyTCPHandler(SocketServer.BaseRequestHandler):
+class MyTCPHandler(socketserver.BaseRequestHandler):
 
-    def handle(self):
+	# global variables
+	global NID, hostname, tcp_port
+	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
+	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
+	global l1_NID, l2_NID, l3_NID, l4_NID
 
-		# global variables
-		global NID, hostname, tcp_port
-		global l1_hostname, l2_hostname, l3_hostname, l4_hostname
-		global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
-		global l1_NID, l2_NID, l3_NID, l4_NID
+	neighbor_list = [l1_NID,l2_NID,l3_NID,l4_NID]	
+
+	def handle(self):
 
 		# self.request is the TCP socket connected to the client
-		self.data = self.request.recv(1024).strip()
-		message = self.data.split()
+		# self.data = self.request.recv(1024).strip()
+		self.data = self.request.recv(1024)
+		#message = pickle.loads(self.data)
+		message = pickle.loads(self.data)
+		message = message.split()
 
 ######################################## Print or Forward Messages #############################################
 
-		if message[0] == 'msg':
-			print message[1]
-			print '\r'
+		# if message[0] == 'msg':
+		# 	print message[1]
+		# 	print '\r'
 
 
 
@@ -239,29 +247,9 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 
 ######################################### Update Routing Tables #################################################			
 
+		#else:
 		if message[0] == 'rte':
-			#print message[1] + ' ' + message[2] + ' ' + message[3]
-			#print '\r'
-
-			dest = int(message[1])
-			gateway = int(message[2])
-			hops = int(message[3])
-			neighbor = int(message[4])
-
-			if dest not in routes:
-				if dest == NID:
-					pass
-				else:
-					routes[dest] = (neighbor,(hops+1))
-
-
-		print routes
-
-			# if dest in routes:
-			# 	for route in routes:
-			# 		if dest == route:
-			# 			if hops <= route[0]:
-			# 				routes[route][0] = hops
+			print(''.join(message[1:]))
 
 
 
@@ -284,7 +272,8 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 #################################################################################################################
 
 # Class: MyUDPHandler
-class MyUDPHandler(SocketServer.BaseRequestHandler):
+#class MyUDPHandler(SocketServer.BaseRequestHandler):
+class MyUDPHandler(socketserver.BaseRequestHandler):
 
 	# interrupt handler for incoming messages
 	def handle(self):
@@ -296,7 +285,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 		data = self.request[0].strip()
 
 		# set message and split
-		message = data
+		message = pickle.loads(data)
 		message = message.split()
 
 		# set link flags
@@ -348,7 +337,7 @@ def sendto(dest_nid, message):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	try:
-		print 'sending ' + '"' + message + '"' + ' to ' + l1_hostname + ', ' + str(l1_udp_port) + ' ' + str(l1_tcp_port)
+		print('sending ' + '"' + message + '"' + ' to ' + l1_hostname + ', ' + str(l1_udp_port) + ' ' + str(l1_tcp_port))
 		# Connect to server and send data
 		sock.connect((l1_hostname, l1_tcp_port))
 		sock.sendall('msg' + ' ' + message)
@@ -404,11 +393,30 @@ def start_listener():
 	time.sleep(2)
 
 	# start threads for listener
-	thread.start_new_thread(TCP_listener, ())
-	thread.start_new_thread(UDP_listener, ())
-	thread.start_new_thread(hello, ())
-	thread.start_new_thread(timer, ())
-	thread.start_new_thread(routing, ())
+	try:
+		_thread.start_new_thread(TCP_listener, ())
+	except:
+		print('failed to call TCP_listener thread')
+
+	try:
+		_thread.start_new_thread(UDP_listener, ())
+	except:
+		print('failed to cass UDP_listener thread')
+
+	try:
+		_thread.start_new_thread(hello, ())
+	except:
+		print('failed to call hello thread')
+
+	try:
+		_thread.start_new_thread(timer, ())
+	except:
+		print('failed to call timer thread')
+
+	try:
+		_thread.start_new_thread(routing, ())
+	except:
+		print('failed to call routing thread')
 
 # function: TCP listener
 def TCP_listener():
@@ -418,25 +426,25 @@ def TCP_listener():
 
 	# set socket for listener
 	try:
-		server = SocketServer.TCPServer((hostname, tcp_port), MyTCPHandler)
+		server = socketserver.TCPServer((hostname, tcp_port), MyTCPHandler)
 		server.serve_forever()
 	except:
-		print "failed to start tcp listener"
+		print("failed to start tcp listener")
 
 # function: receiver (listener)
 def UDP_listener():
 
  	# global variables
- 	global hostname, udp_port
+	global hostname, udp_port
 
 	# set socket for listener
 	try:
-		server = SocketServer.UDPServer((hostname, udp_port), MyUDPHandler)
+		server = socketserver.UDPServer((hostname, udp_port), MyUDPHandler)
 		server.serve_forever()
 
 	# report error if fail
 	except:
-		print "failed to start routing listener"
+		print("failed to start udp listener")
 
 # function: hello (alive)
 def hello():
@@ -448,37 +456,43 @@ def hello():
 
 	# eternal loop
 	while (1):
+		# pickle message
+		message = pickle.dumps(str(NID) + ' ' + hostname + ' ' + str(udp_port))
 
 		try:
-		# open socket and send to neighbor 1
-			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l1_hostname, l1_udp_port))
+			# open socket and send to neighbor 1
+			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0) # UDP
+			sock.sendto(message, (l1_hostname, l1_udp_port))
 			time.sleep(.5)
 		except:
+			print('did not send hello to ' + str(l1_udp_port))
 			pass
 
 		try:
 			# open socket and send to neighbor 2
-			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l2_hostname, l2_udp_port))
+			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0) # UDP
+			sock.sendto(message, (l2_hostname, l2_udp_port))
 			time.sleep(.5)
 		except:
+			print('did not send hello to ' + str(l2_udp_port))			
 			pass
 
 		try:
 			# open socket and send to neighbor 3
-			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l3_hostname, l3_udp_port))
+			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0) # UDP
+			sock.sendto(message, (l3_hostname, l3_udp_port))
 			time.sleep(.5)
 		except:
+			print('did not send hello to ' + str(l3_udp_port))						
 			pass
 
 		try:
 			# open socket and send to neighbor 4
-			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-			sock.sendto(str(NID) + ' ' + hostname + ' ' + str(udp_port), (l4_hostname, l4_udp_port))
+			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0) # UDP
+			sock.sendto(message, (l4_hostname, l4_udp_port))
 			time.sleep(.5)
 		except:
+			print('did not send hello to ' + str(l4_udp_port))			
 			pass
 
 # function: timer (for hello)
@@ -609,22 +623,21 @@ def routing():
 				del routes[l4_NID]
 
 		# update routes in all neighbor nodes
+		#print(str(routes))
+		message = pickle.dumps('rte' + ' ' + str(routes))
 
-		try:
-			for address in addresses:
-				if address[0] != 0:
-					for route in routes:
-
-						try:
-							sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
-							sock.connect((address[1], address[2]))
-							sock.sendall('rte' + ' ' + str(route) + ' ' + str(routes[route][0]) + ' ' + str(routes[route][1]) + ' ' + str(NID))
-						
-							sock.close()
-						except:
-							pass
-		except:
-			pass
+		for address in addresses:
+			if address[0] == 0:
+				pass
+			else:
+				try:
+					sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
+					sock.connect((address[1], address[2]))
+					sock.sendall(message)
+				
+					sock.close()
+				except:
+					continue
 
 		# send this information every 30 seconds
 		time.sleep(10)
@@ -636,27 +649,27 @@ def PrintStatus():
 	global node, NID, hostname, udp_port, tcp_port
 
 	os.system('clear')
-	print "Status of this node"
-	print "-------------------"
-	print "NID: " + str(NID)
-	print "HostName: ", 
-	print "UDP Port: " + str(udp_port)
-	print "TCP Port: " + str(tcp_port)
+	print("Status of this node")
+	print("-------------------")
+	print("NID: " + str(NID))
+	print("HostName: ",)
+	print("UDP Port: " + str(udp_port))
+	print("TCP Port: " + str(tcp_port))
 
-	print "Links: " + str(node.GetLinks())
-	print "Link Table: ", str(node.Get_link_table())
+	print("Links: " + str(node.GetLinks()))
+	print("Link Table: ", str(node.Get_link_table()))
 	if l1_NID != 0:
-		print "Link up to node " + str(l1_NID) + ':', (node.GetUpFlagL1())
+		print("Link up to node " + str(l1_NID) + ':', (node.GetUpFlagL1()))
 	if l2_NID != 0:
-		print "Link up to node " + str(l2_NID) + ':', (node.GetUpFlagL2())
+		print("Link up to node " + str(l2_NID) + ':', (node.GetUpFlagL2()))
 	if l3_NID != 0:
-		print "Link up to node " + str(l3_NID) + ':', (node.GetUpFlagL3())
+		print("Link up to node " + str(l3_NID) + ':', (node.GetUpFlagL3()))
 	if l4_NID != 0:
-		print "Link up to node " + str(l4_NID) + ':', (node.GetUpFlagL4())		
-	print "Address Data Table: ", str(node.address_data_table)
-	print "Routes from " + str(NID) + ": ", routes
-	print "-------------------"
-	raw_input("press 'enter' to continue....")
+		print("Link up to node " + str(l4_NID) + ':', (node.GetUpFlagL4()))		
+	print("Address Data Table: ", str(node.address_data_table))
+	print("Routes from " + str(NID) + ": ", routes)
+	print("-------------------")
+	input("press 'enter' to continue....")
 
 # main function
 def main(argv):
@@ -669,7 +682,7 @@ def main(argv):
 
 	# check for command line arguments
 	if len(sys.argv) != 3:
-		print "Usage: <program_file><nid><itc.txt>"
+		print("Usage: <program_file><nid><itc.txt>")
 		exit(1)
 
 	# initialize node object
@@ -683,12 +696,12 @@ def main(argv):
 
 		# print menu options
 		os.system('clear')
-		print "Enter 'status' to check node status"
-		print "Enter 'send' to message another node"
-		print "Enter 'quit' to end program"
+		print("Enter 'status' to check node status")
+		print("Enter 'send' to message another node")
+		print("Enter 'quit' to end program")
 
 		# set selection value from user
-		selection = raw_input("Enter Selection: ")
+		selection = input("Enter Selection: ")
 
 		# selection: status
 		if selection == 'status':
@@ -697,10 +710,10 @@ def main(argv):
 		# selection: send
 		elif(selection == 'send'):
 			os.system('clear')
-			dest_node = raw_input("enter the node you want to message: ")
-			message = raw_input("enter the message you want to send: ")
+			dest_node = input("enter the node you want to message: ")
+			message = input("enter the message you want to send: ")
 			sendto(dest_node, message)
-			raw_input("press 'enter' to continue...")
+			input("press 'enter' to continue...")
 
 		# selection: quit
 		elif(selection == 'quit'):
@@ -711,7 +724,6 @@ def main(argv):
 
 			# default for bad input
 			os.system('clear')
-			#print 'selection not valid, please try again...'
 			time.sleep(.5)
 			continue
 
