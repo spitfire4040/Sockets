@@ -8,6 +8,7 @@ import os
 import time
 import random
 import pickle
+import ast
 
 # set global variables
 NID = 0
@@ -195,7 +196,6 @@ class Node(object):
 		self.address_data_table[nid] = nid, hostname, port
 
 # class TCP Handler
-#class MyTCPHandler(SocketServer.BaseRequestHandler):
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
 	# global variables
@@ -208,10 +208,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 	def handle(self):
 
-		# self.request is the TCP socket connected to the client
-		# self.data = self.request.recv(1024).strip()
 		self.data = self.request.recv(1024)
-		#message = pickle.loads(self.data)
 		message = pickle.loads(self.data)
 		message = message.split()
 
@@ -247,9 +244,22 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 ######################################### Update Routing Tables #################################################			
 
-		#else:
 		if message[0] == 'rte':
-			print(''.join(message[1:]))
+			temp_routes = ast.literal_eval(''.join(message[1:]))
+
+			# if it's in temp_routes but not in routes, add it to routes
+			for temp_route in temp_routes:
+				if temp_route not in routes:
+					routes[temp_route] = (temp_routes[temp_route][0],temp_routes[temp_route][1])
+
+			# if it's not in temp_routes but it is in routes, delete it from routes
+			for route in routes:
+				if route not in temp_routes:
+					del routes[route]
+
+		# output both lists for testing
+		print(str(NID) + ' has these routes: ' + str(routes))
+
 
 
 
