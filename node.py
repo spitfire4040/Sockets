@@ -1,14 +1,15 @@
 # header files
 import socket
 import sys
-import _thread
-#import SocketServer
+import threading
+from threading import Thread
 import socketserver
 import os
 import time
 import random
 import pickle
 import ast
+from random import randint
 
 # set global variables
 NID = 0
@@ -203,6 +204,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
 	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
 	global l1_NID, l2_NID, l3_NID, l4_NID
+	global update_flag_1, update_flag_2
 
 	neighbor_list = [l1_NID,l2_NID,l3_NID,l4_NID]	
 
@@ -218,66 +220,53 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 		# 	print message[1]
 		# 	print '\r'
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #################################################################################################################
 
 ######################################### Update Routing Tables #################################################			
-
+		# if the first part of the incoming message is 'rte'
 		if message[0] == 'rte':
-			temp_routes = ast.literal_eval(''.join(message[1:]))
 
-			# if it's in temp_routes but not in routes, add it to routes
-			for temp_route in temp_routes:
-				if temp_route not in routes:
-					routes[temp_route] = (temp_routes[temp_route][0],temp_routes[temp_route][1])
+			# set neighbor_node id variable to keep track of where update came from
+			NNID = message[1]
+				
+			# convert the rest of the string back to a dictionary
+			temp_routes = ast.literal_eval(''.join(message[2:]))
 
-			# if it's not in temp_routes but it is in routes, delete it from routes
-			for route in routes:
-				if route not in temp_routes:
-					del routes[route]
+			try:
+				# if it's in temp_routes but not in routes, add it to routes if the hop count is shorter
+				for temp_route in temp_routes:
+					if temp_route not in routes and temp_route != NID:
+
+						# set variables
+						dest = temp_route
+						gateway = temp_routes[temp_route][0]
+						hops = temp_routes[temp_route][1]
+
+						if gateway in neighbor_list:
+
+							# check to see if the new route is shorter
+							if routes[temp_route][0] == gateway:
+
+								if routes[temp_route][1] > hops:
+
+									# add the new route to routes
+									routes[temp_route] = (NNID,hops+1)
+
+			except:
+				pass
+
+			# try:
+			# 	# if it's not in temp_routes but it is in routes, delete it from routes
+			# 	for route in routes:
+
+			# 		# delete route
+			# 		del routes[route]
+
+			# except:
+			# 	pass
 
 		# output both lists for testing
 		print(str(NID) + ' has these routes: ' + str(routes))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #################################################################################################################
 
@@ -321,25 +310,6 @@ def sendto(dest_nid, message):
 	global l1_NID, l2_NID, l3_NID, l4_NID
 
 ################################# Send Message to Neighbor that is In The Network ####################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #######################################################################################################################
 
@@ -402,31 +372,25 @@ def start_listener():
 	# slight pause to let things catch up
 	time.sleep(2)
 
-	# start threads for listener
-	try:
-		_thread.start_new_thread(TCP_listener, ())
-	except:
-		print('failed to call TCP_listener thread')
+	t1 = threading.Thread(target=TCP_listener)
+	t1.daemon=True
+	t1.start()
 
-	try:
-		_thread.start_new_thread(UDP_listener, ())
-	except:
-		print('failed to cass UDP_listener thread')
+	t2 = threading.Thread(target=UDP_listener)
+	t2.daemon=True
+	t2.start()
 
-	try:
-		_thread.start_new_thread(hello, ())
-	except:
-		print('failed to call hello thread')
+	t3 = threading.Thread(target=hello)
+	t3.daemon=True
+	t3.start()
 
-	try:
-		_thread.start_new_thread(timer, ())
-	except:
-		print('failed to call timer thread')
+	t4 = threading.Thread(target=timer)
+	t4.daemon=True
+	t4.start()
 
-	try:
-		_thread.start_new_thread(routing, ())
-	except:
-		print('failed to call routing thread')
+	t5 = threading.Thread(target=routing)
+	t5.daemon=True
+	t5.start()
 
 # function: TCP listener
 def TCP_listener():
@@ -593,17 +557,22 @@ def routing():
 	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
 	global l1_NID, l2_NID, l3_NID, l4_NID
 	global l1_flag, l2_flag, l3_flag, l4_flag
+	global update_flag_1, update_flag_2
+
 
 	addresses = [(l1_NID,l1_hostname,l1_tcp_port),(l2_NID,l2_hostname,l2_tcp_port),(l3_NID,l3_hostname,l3_tcp_port),(l4_NID,l4_hostname,l4_tcp_port)]
 
 	# start loop
 	while(1):
 
+		# generate new random wait time on each iteration
+		wait_time = randint(10, 30)
+
 		# write initial connections to file
 		if node.GetUpFlagL1() == True:
 			if l1_NID != 0:
 				if l1_NID not in routes:
-					routes[l1_NID] = (l1_NID,0)
+					routes[l1_NID] = (l1_NID,1)
 		else:
 			if l1_NID in routes:
 				del routes[l1_NID]
@@ -611,7 +580,7 @@ def routing():
 		if node.GetUpFlagL2() == True:
 			if l2_NID != 0:
 				if l2_NID not in routes:
-					routes[l2_NID] = (l2_NID,0)
+					routes[l2_NID] = (l2_NID,1)
 		else:
 			if l2_NID in routes:
 				del routes[l2_NID]
@@ -619,7 +588,7 @@ def routing():
 		if node.GetUpFlagL3 == True:
 			if l3_NID != 0:
 				if l3_NID not in routes:
-					routes[l3_NID] = (l3_NID,0)
+					routes[l3_NID] = (l3_NID,1)
 		else:
 			if l3_NID in routes:
 				del routes[l3_NID]
@@ -627,25 +596,28 @@ def routing():
 		if node.GetUpFlagL4 == True:
 			if l4_NID != 0:
 				if l4_NID not in routes:
-					routes[l4_NID] = (l4_NID,0)
+					routes[l4_NID] = (l4_NID,1)
 		else:
 			if l4_NID in routes:
 				del routes[l4_NID]
 
 		# update routes in all neighbor nodes
 		#print(str(routes))
-		message = pickle.dumps('rte' + ' ' + str(routes))
+		message = pickle.dumps('rte' + ' ' + str(NID) + ' ' + str(routes))
 
 		for address in addresses:
 			if address[0] == 0:
 				pass
+
 			else:
+
+				# send route to neighbors
 				try:
 					sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
 					sock.connect((address[1], address[2]))
 					sock.sendall(message)
-				
 					sock.close()
+
 				except:
 					continue
 
