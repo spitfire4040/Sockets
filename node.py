@@ -216,7 +216,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 ######################################## Print or Forward Messages #############################################
 
-		# if message[0] == 'msg':
+		if message[0] == 'msg':
+			pass
 		# 	print message[1]
 		# 	print '\r'
 
@@ -228,45 +229,22 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 			# set neighbor_node id variable to keep track of where update came from
 			NNID = message[1]
-				
+
 			# convert the rest of the string back to a dictionary
 			temp_routes = ast.literal_eval(''.join(message[2:]))
 
-			try:
-				# if it's in temp_routes but not in routes, add it to routes if the hop count is shorter
-				for temp_route in temp_routes:
-					if temp_route not in routes and temp_route != NID:
+			for temp_route in temp_routes:
+				if temp_route not in routes and temp_route != NID:
+					routes[temp_route] = (NNID,temp_routes[temp_route][1]+1)
+					print('route addeded')
 
-						# set variables
-						dest = temp_route
-						gateway = temp_routes[temp_route][0]
-						hops = temp_routes[temp_route][1]
+				if temp_route in routes:
+					if temp_routes[temp_route][1] < routes[temp_route][1]:
+						routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)
+						print('shorter route found')
 
-						if gateway in neighbor_list:
 
-							# check to see if the new route is shorter
-							if routes[temp_route][0] == gateway:
 
-								if routes[temp_route][1] > hops:
-
-									# add the new route to routes
-									routes[temp_route] = (NNID,hops+1)
-
-			except:
-				pass
-
-			# try:
-			# 	# if it's not in temp_routes but it is in routes, delete it from routes
-			# 	for route in routes:
-
-			# 		# delete route
-			# 		del routes[route]
-
-			# except:
-			# 	pass
-
-		# output both lists for testing
-		print(str(NID) + ' has these routes: ' + str(routes))
 
 #################################################################################################################
 
@@ -399,11 +377,8 @@ def TCP_listener():
 	global hostname, tcp_port
 
 	# set socket for listener
-	try:
-		server = socketserver.TCPServer((hostname, tcp_port), MyTCPHandler)
-		server.serve_forever()
-	except:
-		print("failed to start tcp listener")
+	server = socketserver.TCPServer((hostname, tcp_port), MyTCPHandler)
+	server.serve_forever()
 
 # function: receiver (listener)
 def UDP_listener():
@@ -412,13 +387,8 @@ def UDP_listener():
 	global hostname, udp_port
 
 	# set socket for listener
-	try:
-		server = socketserver.UDPServer((hostname, udp_port), MyUDPHandler)
-		server.serve_forever()
-
-	# report error if fail
-	except:
-		print("failed to start udp listener")
+	server = socketserver.UDPServer((hostname, udp_port), MyUDPHandler)
+	server.serve_forever()
 
 # function: hello (alive)
 def hello():
@@ -548,9 +518,6 @@ def timer():
 # function: routing
 def routing():
 
-	# <DESTINATION> <GATEWAY> <HOPS>
-	#       2           4       3
-
 	# global variables
 	global NID, hostname, tcp_port
 	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
@@ -564,9 +531,6 @@ def routing():
 
 	# start loop
 	while(1):
-
-		# generate new random wait time on each iteration
-		wait_time = randint(10, 30)
 
 		# write initial connections to file
 		if node.GetUpFlagL1() == True:
@@ -631,15 +595,7 @@ def PrintStatus():
 	global node, NID, hostname, udp_port, tcp_port
 
 	os.system('clear')
-	print("Status of this node")
-	print("-------------------")
 	print("NID: " + str(NID))
-	print("HostName: ",)
-	print("UDP Port: " + str(udp_port))
-	print("TCP Port: " + str(tcp_port))
-
-	print("Links: " + str(node.GetLinks()))
-	print("Link Table: ", str(node.Get_link_table()))
 	if l1_NID != 0:
 		print("Link up to node " + str(l1_NID) + ':', (node.GetUpFlagL1()))
 	if l2_NID != 0:
@@ -648,9 +604,7 @@ def PrintStatus():
 		print("Link up to node " + str(l3_NID) + ':', (node.GetUpFlagL3()))
 	if l4_NID != 0:
 		print("Link up to node " + str(l4_NID) + ':', (node.GetUpFlagL4()))		
-	print("Address Data Table: ", str(node.address_data_table))
 	print("Routes from " + str(NID) + ": ", routes)
-	print("-------------------")
 	input("press 'enter' to continue....")
 
 # main function
