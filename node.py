@@ -197,33 +197,28 @@ class Node(object):
 		self.address_data_table[nid] = nid, hostname, port
 
 # class TCP Handler
-class MyTCPHandler(socketserver.BaseRequestHandler):
-
-	# global variables
-	global NID, hostname, tcp_port
-	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
-	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
-	global l1_NID, l2_NID, l3_NID, l4_NID
-	global update_flag_1, update_flag_2
-
-	neighbor_list = [l1_NID,l2_NID,l3_NID,l4_NID]	
+class MyTCPHandler(socketserver.BaseRequestHandler):	
 
 	def handle(self):
+
+		# global variables
+		global NID, hostname, tcp_port
+		global l1_hostname, l2_hostname, l3_hostname, l4_hostname
+		global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
+		global l1_NID, l2_NID, l3_NID, l4_NID
+		global update_flag_1, update_flag_2
+
+		neighbor_list = [l1_NID,l2_NID,l3_NID,l4_NID]
 
 		self.data = self.request.recv(1024)
 		message = pickle.loads(self.data)
 		message = message.split()
-
-######################################## Print or Forward Messages #############################################
 
 		if message[0] == 'msg':
 			pass
 		# 	print message[1]
 		# 	print '\r'
 
-#################################################################################################################
-
-######################################### Update Routing Tables #################################################			
 		# if the first part of the incoming message is 'rte'
 		if message[0] == 'rte':
 
@@ -239,17 +234,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 					print('route addeded')
 
 				if temp_route in routes:
-					if temp_routes[temp_route][1] < routes[temp_route][1]:
+					if temp_routes[temp_route][1] < routes[temp_route][1] and temp_route != NID and temp_routes[temp_route][0] not in neighbor_list:
 						routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)
-						print('shorter route found')
+						print('route updated')
+
+					if routes[temp_route][1] == 0 and temp_routes[temp_route][1] != 0:
+							routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)
 
 
-
-
-#################################################################################################################
 
 # Class: MyUDPHandler
-#class MyUDPHandler(SocketServer.BaseRequestHandler):
 class MyUDPHandler(socketserver.BaseRequestHandler):
 
 	# interrupt handler for incoming messages
@@ -537,36 +531,44 @@ def routing():
 			if l1_NID != 0:
 				if l1_NID not in routes:
 					routes[l1_NID] = (l1_NID,1)
+				if l1_NID in routes:
+					routes[l1_NID] = (l1_NID,1)
+
 		else:
 			if l1_NID in routes:
-				del routes[l1_NID]
+				routes[l1_NID] = (0,0)
 
 		if node.GetUpFlagL2() == True:
 			if l2_NID != 0:
 				if l2_NID not in routes:
 					routes[l2_NID] = (l2_NID,1)
+				if l2_NID in routes:
+					routes[l2_NID] = (l2_NID,1)
 		else:
 			if l2_NID in routes:
-				del routes[l2_NID]
+				routes[l2_NID] = (0,0)
 
 		if node.GetUpFlagL3 == True:
 			if l3_NID != 0:
 				if l3_NID not in routes:
 					routes[l3_NID] = (l3_NID,1)
+				if l3_NID in routes:
+					routes[l3_NID] = (l3_NID,1)
 		else:
 			if l3_NID in routes:
-				del routes[l3_NID]
+				routes[l3_NID] = (0,0)
 
 		if node.GetUpFlagL4 == True:
 			if l4_NID != 0:
 				if l4_NID not in routes:
 					routes[l4_NID] = (l4_NID,1)
+				if l4_NID in routes:
+					routes[l4_NID] = (l4_NID,1)
 		else:
 			if l4_NID in routes:
-				del routes[l4_NID]
+				routes[l4_NID] = (0,0)
 
 		# update routes in all neighbor nodes
-		#print(str(routes))
 		message = pickle.dumps('rte' + ' ' + str(NID) + ' ' + str(routes))
 
 		for address in addresses:
@@ -583,7 +585,7 @@ def routing():
 					sock.close()
 
 				except:
-					continue
+					continue					
 
 		# send this information every 30 seconds
 		time.sleep(10)
