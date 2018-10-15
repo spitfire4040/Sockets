@@ -231,15 +231,20 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 			for temp_route in temp_routes:
 				if temp_route not in routes and temp_route != NID:
 					routes[temp_route] = (NNID,temp_routes[temp_route][1]+1)
-					print('route addeded')
+					print('route added')
 
-				if temp_route in routes:
-					if temp_routes[temp_route][1] < routes[temp_route][1] and temp_route != NID and temp_routes[temp_route][0] not in neighbor_list:
-						routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)
-						print('route updated')
-
-					if routes[temp_route][1] == 0 and temp_routes[temp_route][1] != 0:
+				if temp_route in routes:  # temp route is already in routes
+					if (routes[temp_route][0] == 0 and routes[temp_route][0] == 0) and (temp_routes[temp_route][0] != 0 and temp_routes[temp_route][0] != 0):
 							routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)
+
+					else:
+						if temp_routes[temp_route][1] < routes[temp_route][1] and temp_routes[temp_route][0] != 0:  # new route has fewer hops than old route but isn't locked
+							if temp_route != NID:  # new route is not a route to me
+								if temp_routes[temp_route][0] not in neighbor_list: # new route isn't my neighbor
+									routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)  # set new route
+									print('route updated')
+
+
 
 
 
@@ -534,7 +539,7 @@ def routing():
 				if l1_NID in routes:
 					routes[l1_NID] = (l1_NID,1)
 
-		else:
+		if node.GetUpFlagL1() == False:
 			if l1_NID in routes:
 				routes[l1_NID] = (0,0)
 
@@ -544,27 +549,27 @@ def routing():
 					routes[l2_NID] = (l2_NID,1)
 				if l2_NID in routes:
 					routes[l2_NID] = (l2_NID,1)
-		else:
+		if node.GetUpFlagL2() == False:
 			if l2_NID in routes:
 				routes[l2_NID] = (0,0)
 
-		if node.GetUpFlagL3 == True:
+		if node.GetUpFlagL3() == True:
 			if l3_NID != 0:
 				if l3_NID not in routes:
 					routes[l3_NID] = (l3_NID,1)
 				if l3_NID in routes:
 					routes[l3_NID] = (l3_NID,1)
-		else:
+		if node.GetUpFlagL3():
 			if l3_NID in routes:
 				routes[l3_NID] = (0,0)
 
-		if node.GetUpFlagL4 == True:
+		if node.GetUpFlagL4() == True:
 			if l4_NID != 0:
 				if l4_NID not in routes:
 					routes[l4_NID] = (l4_NID,1)
 				if l4_NID in routes:
 					routes[l4_NID] = (l4_NID,1)
-		else:
+		if node.GetUpFlagL4() == False:
 			if l4_NID in routes:
 				routes[l4_NID] = (0,0)
 
@@ -588,7 +593,7 @@ def routing():
 					continue					
 
 		# send this information every 30 seconds
-		time.sleep(10)
+		time.sleep(30)
 
 # print status
 def PrintStatus():
