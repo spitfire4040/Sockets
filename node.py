@@ -38,6 +38,7 @@ l3_flag = False
 l4_flag = False
 
 routes = {}
+temp_routes = {}
 
 # create node object variable
 node = None
@@ -206,18 +207,24 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 		global l1_hostname, l2_hostname, l3_hostname, l4_hostname
 		global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
 		global l1_NID, l2_NID, l3_NID, l4_NID
-		global update_flag_1, update_flag_2
-
-		neighbor_list = [l1_NID,l2_NID,l3_NID,l4_NID]
 
 		self.data = self.request.recv(1024)
 		message = pickle.loads(self.data)
 		message = message.split()
 
 		if message[0] == 'msg':
-			pass
-		# 	print message[1]
-		# 	print '\r'
+			target = int(message[1])
+			hops = int(message[2])
+			package = ast.literal_eval(''.join(message[3:]))
+			print('package: ' + package)
+
+			if target == NID:
+				print(package)
+
+			else:
+				hops -= 15
+				sendto(int(target), package, hops)
+				print('forwarding...')
 
 		# if the first part of the incoming message is 'rte'
 		if message[0] == 'rte':
@@ -228,25 +235,32 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 			# convert the rest of the string back to a dictionary
 			temp_routes = ast.literal_eval(''.join(message[2:]))
 
-			for temp_route in temp_routes:
-				if temp_route not in routes and temp_route != NID:
-					routes[temp_route] = (NNID,temp_routes[temp_route][1]+1)
-					print('route added')
+			# iterate through incoming dictionary (temp_routes)
+			for item in temp_routes:
 
-				if temp_route in routes:  # temp route is already in routes
-					if (routes[temp_route][0] == 0 and routes[temp_route][0] == 0) and (temp_routes[temp_route][0] != 0 and temp_routes[temp_route][0] != 0):
-							routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)
+				# if temp_route is not in routes, and the NID of the new route isn't my NID (no routes to myself)
+				if item not in routes and item != NID:
 
-					else:
-						if temp_routes[temp_route][1] < routes[temp_route][1] and temp_routes[temp_route][0] != 0:  # new route has fewer hops than old route but isn't locked
-							if temp_route != NID:  # new route is not a route to me
-								if temp_routes[temp_route][0] not in neighbor_list: # new route isn't my neighbor
-									routes[temp_route] = (NNID, temp_routes[temp_route][1]+1)  # set new route
-									print('route updated')
+					# add the route, set the gateway to the neighbor it came from, and increment hops by 1
+					routes[item] = (NNID,(temp_routes[item][1]+1))
 
+				# if temp_route is in routes already
+				if item in routes:
 
+					# if the hop count of the new route is smaller than the hop count of the current route, and the route isn't to me
+					if temp_routes[item][1] < routes[item][1]:
 
+							# update routes with new shorter route
+							routes[item] = (NNID, (temp_routes[item][1]+1))
 
+			try:
+				for item in routes:
+
+					if item not in temp_routes:
+
+						del routes[item]
+			except:
+				pass
 
 # Class: MyUDPHandler
 class MyUDPHandler(socketserver.BaseRequestHandler):
@@ -278,31 +292,55 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 			l4_flag = True          
 
 # Function: sendto()
-def sendto(dest_nid, message):
+def sendto(dest_nid, hops, message):
 
 	# global variables
 	global NID, hostname, tcp_port
 	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
 	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
 	global l1_NID, l2_NID, l3_NID, l4_NID
+	gateway = 0
 
-################################# Send Message to Neighbor that is In The Network ####################################
+	for item in routes:
+		if dest_nid in routes:
+			gateway = routes[dest_nid][0]
 
-#######################################################################################################################
+			if gateway == l1_NID:
+				HOST = l1_hostname
+				PORT = l1_tcp_port
 
-	# Create a socket (SOCK_STREAM means a TCP socket)
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			if gateway == l2_NID:
+				HOST = l2_hostname
+				PORT = l2_tcp_port
 
-	try:
-		print('sending ' + '"' + message + '"' + ' to ' + l1_hostname + ', ' + str(l1_udp_port) + ' ' + str(l1_tcp_port))
-		# Connect to server and send data
-		sock.connect((l1_hostname, l1_tcp_port))
-		sock.sendall('msg' + ' ' + message)
+			if gateway == l3_NID:
+				HOST = l3_hostname
+				PORT = l3_tcp_port
 
-		# Receive data from the server and shut down
-		received = sock.recv(1024)
-	finally:
-		sock.close()
+			if gateway == l4_NID:
+				HOST = l4_hostname
+				PORT = l4_tcp_port
+
+			package = pickle.dumps('msg' + ' ' + str(dest_nid) + ' ' + str(hops) + ' ' + message)	
+
+			# Create a socket (SOCK_STREAM means a TCP socket)
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+			try:
+				# Connect to server and send data
+				sock.connect((HOST, PORT))
+				sock.sendall(package)
+
+				# Receive data from the server and shut down
+				received = sock.recv(1024)
+			except:
+				pass
+
+			finally:
+				sock.close()
+
+		else:
+			print('No route to host, try again later.')				
 
 # function: start listener
 def start_listener():
@@ -365,9 +403,13 @@ def start_listener():
 	t4.daemon=True
 	t4.start()
 
-	t5 = threading.Thread(target=routing)
+	t5 = threading.Thread(target=local_routing)
 	t5.daemon=True
 	t5.start()
+
+	t6 = threading.Thread(target=routing)
+	t6.daemon=True
+	t6.start()
 
 # function: TCP listener
 def TCP_listener():
@@ -514,6 +556,62 @@ def timer():
 		# now check for true every 15 seconds
 		time.sleep(15)			
 
+# function: local_routing
+def local_routing():
+
+	# global variables
+	global NID, hostname, tcp_port
+	global l1_hostname, l2_hostname, l3_hostname, l4_hostname
+	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
+	global l1_NID, l2_NID, l3_NID, l4_NID
+	global l1_flag, l2_flag, l3_flag, l4_flag
+	global update_flag_1, update_flag_2
+
+
+	addresses = [(l1_NID,l1_hostname,l1_tcp_port),(l2_NID,l2_hostname,l2_tcp_port),(l3_NID,l3_hostname,l3_tcp_port),(l4_NID,l4_hostname,l4_tcp_port)]
+
+	# start loop
+	while(1):
+
+		# check routes, add or edit;
+		if node.GetUpFlagL1() == True:
+			if l1_NID != 0:
+				routes[l1_NID] = (l1_NID,1)
+
+		else:
+			if l1_NID in routes:
+				del routes[l1_NID]
+
+		# check routes, add or edit;
+		if node.GetUpFlagL2() == True:
+			if l2_NID != 0:
+				routes[l2_NID] = (l2_NID,1)
+
+		else:
+			if l2_NID in routes:
+				del routes[l2_NID]
+
+		# check routes, add or edit;
+		if node.GetUpFlagL3() == True:
+			if l3_NID != 0:
+				routes[l3_NID] = (l3_NID,1)
+
+		else:
+			if l3_NID in routes:
+				del routes[l3_NID]
+
+		# check routes, add or edit;
+		if node.GetUpFlagL4() == True:
+			if l4_NID != 0:
+				routes[l4_NID] = (l4_NID,1)
+
+		else:
+			if l4_NID in routes:
+				del routes[l4_NID]
+
+		# send this information every 15 seconds
+		time.sleep(15)
+
 # function: routing
 def routing():
 
@@ -531,51 +629,10 @@ def routing():
 	# start loop
 	while(1):
 
-		# write initial connections to file
-		if node.GetUpFlagL1() == True:
-			if l1_NID != 0:
-				if l1_NID not in routes:
-					routes[l1_NID] = (l1_NID,1)
-				if l1_NID in routes:
-					routes[l1_NID] = (l1_NID,1)
-
-		if node.GetUpFlagL1() == False:
-			if l1_NID in routes:
-				routes[l1_NID] = (0,0)
-
-		if node.GetUpFlagL2() == True:
-			if l2_NID != 0:
-				if l2_NID not in routes:
-					routes[l2_NID] = (l2_NID,1)
-				if l2_NID in routes:
-					routes[l2_NID] = (l2_NID,1)
-		if node.GetUpFlagL2() == False:
-			if l2_NID in routes:
-				routes[l2_NID] = (0,0)
-
-		if node.GetUpFlagL3() == True:
-			if l3_NID != 0:
-				if l3_NID not in routes:
-					routes[l3_NID] = (l3_NID,1)
-				if l3_NID in routes:
-					routes[l3_NID] = (l3_NID,1)
-		if node.GetUpFlagL3():
-			if l3_NID in routes:
-				routes[l3_NID] = (0,0)
-
-		if node.GetUpFlagL4() == True:
-			if l4_NID != 0:
-				if l4_NID not in routes:
-					routes[l4_NID] = (l4_NID,1)
-				if l4_NID in routes:
-					routes[l4_NID] = (l4_NID,1)
-		if node.GetUpFlagL4() == False:
-			if l4_NID in routes:
-				routes[l4_NID] = (0,0)
-
 		# update routes in all neighbor nodes
 		message = pickle.dumps('rte' + ' ' + str(NID) + ' ' + str(routes))
 
+		# iterate through address list
 		for address in addresses:
 			if address[0] == 0:
 				pass
@@ -592,8 +649,8 @@ def routing():
 				except:
 					continue					
 
-		# send this information every 30 seconds
-		time.sleep(30)
+		# send this information every 15 seconds
+		time.sleep(20)
 
 # print status
 def PrintStatus():
@@ -637,7 +694,7 @@ def main(argv):
 	# loop
 	while(run):
 
-		# print menu options
+		#print menu options
 		os.system('clear')
 		print("Enter 'status' to check node status")
 		print("Enter 'send' to message another node")
@@ -655,7 +712,7 @@ def main(argv):
 			os.system('clear')
 			dest_node = input("enter the node you want to message: ")
 			message = input("enter the message you want to send: ")
-			sendto(dest_node, message)
+			sendto(int(dest_node), 15, message)
 			input("press 'enter' to continue...")
 
 		# selection: quit
