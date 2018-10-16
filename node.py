@@ -214,16 +214,18 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 		if message[0] == 'msg':
 			target = int(message[1])
-			hops = int(message[2])
-			package = ast.literal_eval(''.join(message[3:]))
-			print('package: ' + package)
+			source = message[2]
+			hops = int(message[3])
+			package = ''.join(message[4:])
 
 			if target == NID:
-				print(package)
+				os.system('clear')
+				print(source + ' says: ' + package)
+				os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 			else:
 				hops -= 15
-				sendto(int(target), package, hops)
+				sendto(target, package, hops)
 				print('forwarding...')
 
 		# if the first part of the incoming message is 'rte'
@@ -301,46 +303,51 @@ def sendto(dest_nid, hops, message):
 	global l1_NID, l2_NID, l3_NID, l4_NID
 	gateway = 0
 
-	for item in routes:
-		if dest_nid in routes:
-			gateway = routes[dest_nid][0]
+	if dest_nid in routes:
+		gateway = int(routes[dest_nid][0])
 
-			if gateway == l1_NID:
-				HOST = l1_hostname
-				PORT = l1_tcp_port
+		if gateway == l1_NID:
+			HOST = l1_hostname
+			PORT = l1_tcp_port
 
-			if gateway == l2_NID:
-				HOST = l2_hostname
-				PORT = l2_tcp_port
+		elif gateway == l2_NID:
+			HOST = l2_hostname
+			PORT = l2_tcp_port
 
-			if gateway == l3_NID:
-				HOST = l3_hostname
-				PORT = l3_tcp_port
+		elif gateway == l3_NID:
+			HOST = l3_hostname
+			PORT = l3_tcp_port
 
-			if gateway == l4_NID:
-				HOST = l4_hostname
-				PORT = l4_tcp_port
-
-			package = pickle.dumps('msg' + ' ' + str(dest_nid) + ' ' + str(hops) + ' ' + message)	
-
-			# Create a socket (SOCK_STREAM means a TCP socket)
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-			try:
-				# Connect to server and send data
-				sock.connect((HOST, PORT))
-				sock.sendall(package)
-
-				# Receive data from the server and shut down
-				received = sock.recv(1024)
-			except:
-				pass
-
-			finally:
-				sock.close()
+		elif gateway == l4_NID:
+			HOST = l4_hostname
+			PORT = l4_tcp_port
 
 		else:
-			print('No route to host, try again later.')				
+			print('no address information for gateway ' + str(gateway))
+
+	else:
+		print(str(routes))
+		print('No route to host, try again later.')
+
+
+	package = pickle.dumps('msg' + ' ' + str(dest_nid) + ' ' + str(NID) + ' ' + str(hops) + ' ' + message)
+
+	# Create a socket (SOCK_STREAM means a TCP socket)
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	# send route to neighbors
+	try:
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
+		sock.connect((HOST, PORT))
+		sock.sendall(package)
+		sock.close()
+
+	except:
+		print('unable to send message: HOST=' + HOST + ' , PORT=' + str(PORT))
+		pass
+
+	finally:
+		sock.close()
 
 # function: start listener
 def start_listener():
@@ -649,8 +656,8 @@ def routing():
 				except:
 					continue					
 
-		# send this information every 15 seconds
-		time.sleep(20)
+		# send this information every 30 seconds
+		time.sleep(30)
 
 # print status
 def PrintStatus():
@@ -669,7 +676,7 @@ def PrintStatus():
 	if l4_NID != 0:
 		print("Link up to node " + str(l4_NID) + ':', (node.GetUpFlagL4()))		
 	print("Routes from " + str(NID) + ": ", routes)
-	input("press 'enter' to continue....")
+	os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 # main function
 def main(argv):
@@ -713,7 +720,7 @@ def main(argv):
 			dest_node = input("enter the node you want to message: ")
 			message = input("enter the message you want to send: ")
 			sendto(int(dest_node), 15, message)
-			input("press 'enter' to continue...")
+			os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 		# selection: quit
 		elif(selection == 'quit'):
