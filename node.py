@@ -217,6 +217,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 		message = pickle.loads(self.data)
 		message = message.split()
 
+############################################################## MESSAGING #############################################################
+
 		if message[0] == 'msg':
 			target = int(message[1])
 			source = message[2]
@@ -229,9 +231,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 				os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 			else:
-				hops -= 15
-				sendto(target, package, hops)
-				print('forwarding...')
+				sendto(target, hops, package)
+				print('forwarding....')
 
 ################################################################ ROUTING #############################################################
 
@@ -264,13 +265,13 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 							routes[item] = (NNID, (temp_routes[item][1]+1))
 							update_counter += 1
 
-		try:
-			for item in routes:
-				if item not in temp_routes:
-					del routes[item]
-					remove_counter += 1
-		except:
-			pass
+#		try:
+#			for item in routes:
+#				if item not in temp_routes:
+#					del routes[item]
+#					remove_counter += 1
+#		except:
+#			pass
 
 #######################################################################################################################################
 
@@ -313,6 +314,9 @@ def sendto(dest_nid, hops, message):
 	global l1_NID, l2_NID, l3_NID, l4_NID
 	gateway = 0
 
+	hops -= 1
+
+
 	if dest_nid in routes:
 		gateway = int(routes[dest_nid][0])
 
@@ -338,26 +342,37 @@ def sendto(dest_nid, hops, message):
 	else:
 		print(str(routes))
 		print('No route to host, try again later.')
+		hops = 0
+		pass
 
 
 	package = pickle.dumps('msg' + ' ' + str(dest_nid) + ' ' + str(NID) + ' ' + str(hops) + ' ' + message)
 
-	# Create a socket (SOCK_STREAM means a TCP socket)
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	# check hop count
+	if hops > 0:
 
-	# send route to neighbors
-	try:
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
-		sock.connect((HOST, PORT))
-		sock.sendall(package)
-		sock.close()
+		# Create a socket (SOCK_STREAM means a TCP socket)
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-	except:
-		print('unable to send message: HOST=' + HOST + ' , PORT=' + str(PORT))
+		# send route to neighbors
+		try:
+			print('forwarding to ' + str(gateway))
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)				
+			sock.connect((HOST, PORT))
+			sock.sendall(package)
+			sock.close()
+
+		except:
+			print('unable to send message: HOST=' + HOST + ' , PORT=' + str(PORT))
+			pass
+
+		finally:
+			sock.close()
+
+	# if hops = 0, drop message
+	else:
+		print("hop count exceeded, message dropped")
 		pass
-
-	finally:
-		sock.close()
 
 # function: start listener
 def start_listener():
