@@ -37,6 +37,10 @@ l2_flag = False
 l3_flag = False
 l4_flag = False
 
+add_counter = 0
+update_counter = 0
+remove_counter = 0
+
 routes = {}
 temp_routes = {}
 
@@ -207,6 +211,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 		global l1_hostname, l2_hostname, l3_hostname, l4_hostname
 		global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
 		global l1_NID, l2_NID, l3_NID, l4_NID
+		global add_counter, update_counter, remove_counter
 
 		self.data = self.request.recv(1024)
 		message = pickle.loads(self.data)
@@ -228,6 +233,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 				sendto(target, package, hops)
 				print('forwarding...')
 
+################################################################ ROUTING #############################################################
+
 		# if the first part of the incoming message is 'rte'
 		if message[0] == 'rte':
 
@@ -245,6 +252,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 					# add the route, set the gateway to the neighbor it came from, and increment hops by 1
 					routes[item] = (NNID,(temp_routes[item][1]+1))
+					add_counter += 1
 
 				# if temp_route is in routes already
 				if item in routes:
@@ -254,15 +262,17 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 							# update routes with new shorter route
 							routes[item] = (NNID, (temp_routes[item][1]+1))
+							update_counter += 1
 
-			try:
-				for item in routes:
+		try:
+			for item in routes:
+				if item not in temp_routes:
+					del routes[item]
+					remove_counter += 1
+		except:
+			pass
 
-					if item not in temp_routes:
-
-						del routes[item]
-			except:
-				pass
+#######################################################################################################################################
 
 # Class: MyUDPHandler
 class MyUDPHandler(socketserver.BaseRequestHandler):
@@ -572,10 +582,6 @@ def local_routing():
 	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
 	global l1_NID, l2_NID, l3_NID, l4_NID
 	global l1_flag, l2_flag, l3_flag, l4_flag
-	global update_flag_1, update_flag_2
-
-
-	addresses = [(l1_NID,l1_hostname,l1_tcp_port),(l2_NID,l2_hostname,l2_tcp_port),(l3_NID,l3_hostname,l3_tcp_port),(l4_NID,l4_hostname,l4_tcp_port)]
 
 	# start loop
 	while(1):
@@ -628,8 +634,6 @@ def routing():
 	global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port	
 	global l1_NID, l2_NID, l3_NID, l4_NID
 	global l1_flag, l2_flag, l3_flag, l4_flag
-	global update_flag_1, update_flag_2
-
 
 	addresses = [(l1_NID,l1_hostname,l1_tcp_port),(l2_NID,l2_hostname,l2_tcp_port),(l3_NID,l3_hostname,l3_tcp_port),(l4_NID,l4_hostname,l4_tcp_port)]
 
@@ -676,6 +680,9 @@ def PrintStatus():
 	if l4_NID != 0:
 		print("Link up to node " + str(l4_NID) + ':', (node.GetUpFlagL4()))		
 	print("Routes from " + str(NID) + ": ", routes)
+	print("add_counter: " + str(add_counter))
+	print("update_counter " + str(update_counter))
+	print("remove_counter: " + str(remove_counter))
 	os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 # main function
