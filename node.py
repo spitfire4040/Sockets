@@ -1,3 +1,16 @@
+# to run this file, use Python3, and enter the following:
+# python3 node.py 1 itc2.txt where:
+#                                 python3 = version of Python interpreter
+#                                 node.py = name of the program to run
+#                                 1 = number of this node (give each node a unique number that correlates with the itc file)
+#                                 itc2.txt = the itc (topology) file you want to use
+#                                 this program is fully functional with the exception of routes being removed...
+#                                       (this is nearly done, just needs a few tweaks)
+
+
+
+
+
 # header files
 import socket
 import sys
