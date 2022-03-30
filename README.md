@@ -20,3 +20,5 @@ for example:
 python network_node.py 1 itc3.txt
 
 The node name for each node must be unique, i.e. 1, 2, 3,......9, 10.
+
+The chat_server.py and chat_client.py files are a simple chat service that can be used for building socket projects.
